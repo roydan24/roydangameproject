@@ -28,6 +28,32 @@ class Player(pygame.sprite.Sprite):
         # Move left/right
         self.rect.x += self.vel_x
 
+        # List of sprites we can bump against
+        self.level = None
+
+    def update(self):
+        """ Move the player. """
+        # Gravity
+        self.calc_grav()
+
+        # Move left/right
+        self.rect.x += self.vel_x
+
+        # Move up/down
+        self.rect.y += self.vel_y
+
+    def calc_grav(self):
+        """ Calculate effect of gravity. """
+        if self.vel_y == 0:
+            self.vel_y = 1
+        else:
+            self.vel_y += .35
+
+        # See if we are on the ground.
+        if self.rect.y >= HEIGHT - self.rect.height and self.vel_y >= 0:
+            self.vel_y = 0
+            self.rect.y = HEIGHT - self.rect.height
+
     def jump(self):
         """ Called when user hits 'jump' button. """
 
@@ -35,18 +61,29 @@ class Player(pygame.sprite.Sprite):
         # Move down 2 pixels because it doesn't work well if we only move down
         # 1 when working with a platform moving down.
         self.rect.y += 2
-        platform_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        platform_hit_list = pygame.sprite.spritecollide(self, self.level, False)
         self.rect.y -= 2
 
         # If it is ok to jump, set our speed upwards
         if len(platform_hit_list) > 0 or self.rect.bottom >= HEIGHT:
             self.vel_y = -10
 
+            # See if we hit anything
+        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
+        for block in block_hit_list:
+            # If we are moving right,
+            # set our right side to the left side of the item we hit
+            if self.vel_x > 0:
+                self.rect.right = block.rect.left
+            elif self.vel_x < 0:
+                # Otherwise if we are moving left, do the opposite.
+                self.rect.left = block.rect.right
+
     # Player movement
     def go_left(self):
-        self.vel_x = -3
+        self.vel_x = -4
     def go_right(self):
-        self.vel_x = 3
+        self.vel_x = 4
     def stop(self):
         self.vel_x = 0
 
@@ -120,11 +157,13 @@ def main():
     # ----- LOCAL VARIABLES
     done = False
     clock = pygame.time.Clock()
+    score = 0
+
 
     # Sprite groups
     all_sprites = pygame.sprite.RenderUpdates()
-    enemy_sprites = pygame.sprite.Group()
-    coin_sprites = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    coin_group = pygame.sprite.Group()
 
     # Create player
     player = Player()
@@ -139,6 +178,32 @@ def main():
 
     # ----- MAIN LOOP
     while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    player.go_left()
+                if event.key == pygame.K_RIGHT:
+                    player.go_right()
+                if event.key == pygame.K_UP:
+                    player.jump()
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT and player.vel_x < 0:
+                    player.stop()
+                if event.key == pygame.K_RIGHT and player.vel_x > 0:
+                    player.stop()
+
+                # If the player gets near the right side, shift the world left (-x)
+                if player.rect.right > WIDTH:
+                    player.rect.right = WIDTH
+
+                # If the player gets near the left side, shift the world right (+x)
+                if player.rect.left < 0:
+                    player.rect.left = 0
+
         # -- Event Handler
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -149,6 +214,12 @@ def main():
 
         for coin in coin_list:
             coin.update()
+
+        # Player collides with coin
+        coins_collected = pygame.sprite.spritecollide(player, coin_group, True)
+        for coin in coins_collected:
+            score += 1
+            print(score)
 
         # ----- DRAW
         screen.fill(SKY_BLUE)
