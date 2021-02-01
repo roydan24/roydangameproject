@@ -1,5 +1,4 @@
 
-
 import random
 import pygame
 
@@ -8,11 +7,13 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 SKY_BLUE = (95, 165, 228)
+GREEN = (34, 139, 34)
 WIDTH = 800
 HEIGHT = 600
-TITLE = "gameproject"
-NUM_COINS = 15
+TITLE = "Link's Coin Fall"
+NUM_COINS = 30
 
+# Create player class
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -39,7 +40,7 @@ class Player(pygame.sprite.Sprite):
 
         # Move left/right
         self.rect.x += self.vel_x
-        
+
         # See if we hit anything
         block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
         for block in block_hit_list:
@@ -53,7 +54,7 @@ class Player(pygame.sprite.Sprite):
 
         # Move up/down
         self.rect.y += self.vel_y
-        
+
         # Check and see if we hit anything
         block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
         for block in block_hit_list:
@@ -112,6 +113,7 @@ class Player(pygame.sprite.Sprite):
     def stop(self):
         self.vel_x = 0
 
+# Create enemy class
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, y_coord):
         """
@@ -120,7 +122,7 @@ class Enemy(pygame.sprite.Sprite):
         """
         super().__init__()
 
-        self.image = pygame.image.load("./images/goomba copy.png")
+        self.image = pygame.image.load("./images/goomba.png")
         self.image = pygame.transform.scale(self.image, (64, 64))
 
         self.rect = self.image.get_rect()
@@ -129,49 +131,43 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.centerx = WIDTH / 2
         self.rect.centery = 570
 
-        self.x_vel = 3
+        self.x_vel = 5
 
     def update(self):
         """Move the enemy side-to-side"""
         self.rect.x += self.x_vel
 
         # Keep enemy in the screen
-        if self.rect.right > 600 or self.rect.left < 0:
+        if self.rect.right > WIDTH or self.rect.left < 0:
             self.x_vel *= -1
 
-# TODO: try an image for coins
+# Create coin class
 class Coin(pygame.sprite.Sprite):
-    def __init__(self, radius=6):
-        self.radius = radius
+    def __init__(self):
+        super().__init__()
 
-        self.colour = YELLOW
+        self.image = pygame.image.load("./images/coin.png")
+        self.image = pygame.transform.scale(self.image, (32, 32))
 
-        self.x, self.y = (
+        self.rect = self.image.get_rect()
+
+        self.rect.x, self.rect.y = (
             random.randrange(0, WIDTH),
             random.randrange(0, HEIGHT)
         )
 
         self.vel_y = random.choice([1, 2])
 
-    def draw(self, screen):
-        """Draws the coins on the screen."""
-
-        pygame.draw.circle(
-            screen,
-            self.colour,
-            (self.x, self.y),
-            self.radius
-        )
-
     def update(self):
         """Update location of coin."""
-        self.y += self.vel_y
+        self.rect.y += self.vel_y
 
         # reset location if it reaches the bottom
-        if self.y > HEIGHT:
-            self.x = random.randrange(0, WIDTH)
-            self.y = random.randrange(-15, 0)
-            
+        if self.rect.y > HEIGHT:
+            self.rect.x = random.randrange(0, WIDTH)
+            self.rect.y = random.randrange(-15, 0)
+
+# May add platforms later on
 class Platform(pygame.sprite.Sprite):
     """ Platform the user can jump on """
 
@@ -202,7 +198,7 @@ class Level(object):
         # Background image
         self.background = None
 
-    # Update everythign on this level
+    # Update everything on this level
     def update(self):
         """ Update everything in this level."""
         self.platform_list.update()
@@ -229,8 +225,8 @@ class Level_01(Level):
 
         # Array with width, height, x, and y of platform
         level = [
-                 [210, 70, 600, 550],
-                 ]
+            [210, 70, 600, 800],
+        ]
 
         # Go through the array above and add platforms
         for platform in level:
@@ -259,7 +255,7 @@ def main():
     all_sprites = pygame.sprite.RenderUpdates()
     enemy_sprites = pygame.sprite.Group()
     coin_sprites = pygame.sprite.Group()
-    
+
     # enemies
     enemy = Enemy(1)
     all_sprites.add(enemy)
@@ -274,8 +270,11 @@ def main():
     for i in range(NUM_COINS):
         coin = Coin()
         coin_list.append(coin)
-        coin.vel_y = random.choice([3, 4])
-        
+        coin.rect.x = random.randrange(WIDTH - coin.rect.width)
+        coin.rect.y = random.randrange(HEIGHT - coin.rect.height)
+        all_sprites.add(coin)
+        coin_sprites.add(coin)
+
     # Create all the levels
     level_list = []
     level_list.append(Level_01(player))
@@ -322,10 +321,10 @@ def main():
 
         # ----- LOGIC
         all_sprites.update()
-        
+
         # Update items in the level
         current_level.update()
-        
+
         # If the player gets near the right side, shift the world left (-x)
         if player.rect.right > WIDTH:
             player.rect.right = WIDTH
@@ -334,23 +333,28 @@ def main():
         if player.rect.left < 0:
             player.rect.left = 0
 
-        for coin in coin_list:
-            coin.update()
+        # Update coin
+        for coin in coin_sprites:
+             coin.update()
 
         # Player collides with coin
         coins_collected = pygame.sprite.spritecollide(player, coin_sprites, True)
         for coin in coins_collected:
             score += 1
-            print(score)
+            print(f"Score = {score}")
+
+        # Enemy collides with player
+        enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites, False)
+        for enemy in enemy_collide:
+            print("Game Over")
+            done = True
 
         # ----- DRAW
-        screen.fill(SKY_BLUE)
-        for coin in coin_list:
-            coin.draw(screen)
+        screen.fill(GREEN)
 
         current_level.draw(screen)
         dirty_rectangles = all_sprites.draw(screen)
-        
+
 
         # ----- UPDATE
         pygame.display.flip()
