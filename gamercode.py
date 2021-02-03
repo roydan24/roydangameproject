@@ -343,11 +343,16 @@ def main():
             score += 1
             print(f"Score = {score}")
 
+        if score == NUM_COINS:
+            done = True
+            print("You win!")
+
         # Enemy collides with player
         enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites, False)
         for enemy in enemy_collide:
             print("Game Over")
             done = True
+
 
         # ----- DRAW
         screen.fill(GREEN)
